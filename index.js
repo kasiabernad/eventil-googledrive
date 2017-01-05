@@ -103,7 +103,7 @@ const putObjectAsync = Promise.promisify(s3.putObject.bind(s3));
 
 
 function getProjects() {
-  rootDirId = '0B7TfKu93uh00UUgteDV3dHhUMVE'
+  const rootDirId = process.env.GOOGLE_ROOT_DIR
   return authorize()
     .then((credentials) => {
       return list({
@@ -140,7 +140,7 @@ function getFiles(fileId, fileName, slug) {
 function createConfigFiles(data, slug){
   console.log('Creating file');
   for (let i = 0; i < data.valueRanges.length; i++) {
-    worksheet = data.valueRanges[i]
+    const worksheet = data.valueRanges[i]
     const csvData = worksheet.values
     const csvFileName = `${slug}-${i}.csv`
     writeToStreamAsync(csvData, {headers: true}).then((result) => {
@@ -150,22 +150,22 @@ function createConfigFiles(data, slug){
 }
 
 function storeCsvOnAws(data,csvFileName) {
-  const bucketName = 'kasiakasprzak'
+  const bucketName = 'kasiakasprzak' /* Change on 'sources' whit other aws credentials. With my credentials I can't use 'sources' bucket. I have to provide uniq bucket - free acount? */
   createBucketAsync({Bucket: bucketName}).then(() => {
     const params = {Bucket: bucketName, Key: csvFileName , Body: data, ACL: 'public-read'};
     putObjectAsync(params).then(() => {
       console.log("Successfully uploaded data to " + bucketName + "/" + csvFileName);
-      // sendRequestToEventil(csvFileName)
+      sendRequestToEventil(csvFileName)
     })
   })
 }
 
 function sendRequestToEventil(csvFileName) {
   const url = `https://s3.amazonaws.com/kasiakasprzak/${csvFileName}`
-  const slug = csvFileName.split('.')[0]
+  const slug = csvFileName.split('.')[0].slice(0, -2);
   const options = {
     method: 'POST',
-    uri: `https://eventil.com/events/${slug}/add_speaker_participations`,
+    url: `https://eventil.com/events/${slug}/add_speaker_participations`,
     form: {
       url: url
     }
@@ -174,7 +174,7 @@ function sendRequestToEventil(csvFileName) {
   request(options).then((parsedBody) => {
     console.log(parsedBody)
   }).catch( (err) => {
-    console.log(err.message + 'Request Options: ' + err.options)
+    console.log(err.message + 'Request Options: ' + JSON.stringify(err.options))
   });
 }
 
