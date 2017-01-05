@@ -8,9 +8,10 @@ const Promise = require('bluebird');
 const fs = require('fs');
 const readFile = Promise.promisify(fs.readFile);
 const csv = require('fast-csv');
-const bodyParser = require('body-parser')
-const nunjucks = require('nunjucks')
+const bodyParser = require('body-parser');
+const nunjucks = require('nunjucks');
 const AWS = require('aws-sdk');
+const request = require('request-promise');
 
 ///////////////////////// CONFIG ////////////////////////////////////////
 const app = express();
@@ -91,7 +92,7 @@ function storeToken(token) {
   console.log('Token stored to ' + TOKEN_PATH);
 }
 
-//////////////// Functions based on Google API ////////////////////////
+//////////////// Functions based on Google API And AWS API////////////////////////
 
 const list = Promise.promisify(service.files.list);
 const readSheet = Promise.promisify(sheets.spreadsheets.values.batchGet);
@@ -148,20 +149,38 @@ function createConfigFiles(data, slug){
   }
 }
 
-function storeCsvOnAws(data,slug) {
+function storeCsvOnAws(data,csvFileName) {
   const bucketName = 'kasiakasprzak'
   createBucketAsync({Bucket: bucketName}).then(() => {
-    const params = {Bucket: bucketName, Key: slug , Body: data};
+    const params = {Bucket: bucketName, Key: csvFileName , Body: data, ACL: 'public-read'};
     putObjectAsync(params).then(() => {
-      console.log("Successfully uploaded data to " + bucketName + "/" + slug);
+      console.log("Successfully uploaded data to " + bucketName + "/" + csvFileName);
+      // sendRequestToEventil(csvFileName)
     })
   })
+}
+
+function sendRequestToEventil(csvFileName) {
+  const url = `https://s3.amazonaws.com/kasiakasprzak/${csvFileName}`
+  const slug = csvFileName.split('.')[0]
+  const options = {
+    method: 'POST',
+    uri: `https://eventil.com/events/${slug}/add_speaker_participations`,
+    form: {
+      url: url
+    }
+  };
+
+  request(options).then((parsedBody) => {
+    console.log(parsedBody)
+  }).catch( (err) => {
+    console.log(err.message + 'Request Options: ' + err.options)
+  });
 }
 
 ///////////////// Routes //////////////////////////////////////////
 app.get('/', (req, res) => {
   getProjects().then((result) => {
-    console.log(result)
     return res.render('index.html', {
       files: result.files
     });
