@@ -123,12 +123,12 @@ function getFiles(fileId, fileName, slug) {
       spreadsheetId: fileId,
     })
   }).then((result) => {
-    const ranges = result.sheets.map((sheet) => sheet.properties.title)
+    const range = result.sheets[0].properties.title
     return authorize().then((credentials) => {
       return readSheet({
         auth: credentials,
         spreadsheetId: fileId,
-        ranges: ranges
+        ranges: range
       })
     })
   }).then((result)=> {
@@ -139,30 +139,27 @@ function getFiles(fileId, fileName, slug) {
 
 function createConfigFiles(data, slug){
   console.log('Creating file');
-  for (let i = 0; i < data.valueRanges.length; i++) {
-    const worksheet = data.valueRanges[i]
-    const csvData = worksheet.values
-    const csvFileName = `${slug}-${i}.csv`
-    writeToStreamAsync(csvData, {headers: true}).then((result) => {
-      storeCsvOnAws(result, csvFileName)
-    })
-  }
+  const worksheet = data.valueRanges[0]
+  const csvData = worksheet.values
+  writeToStreamAsync(csvData, {headers: true}).then((result) => {
+    storeCsvOnAws(result, slug)
+  })
 }
 
-function storeCsvOnAws(data,csvFileName) {
-  const bucketName = 'kasiakasprzak' /* Change on 'sources' whit other aws credentials. With my credentials I can't use 'sources' bucket. I have to provide uniq bucket - free acount? */
+function storeCsvOnAws(data, slug) {
+  const bucketName = 'kasiakasprzak' /* Change on 'sources' whit Nukomeet's aws credentials. With my credentials I can't use 'sources' bucket. I have to provide uniq bucket - free acount? */
   createBucketAsync({Bucket: bucketName}).then(() => {
+    const csvFileName = `${slug}.csv`
     const params = {Bucket: bucketName, Key: csvFileName , Body: data, ACL: 'public-read'};
     putObjectAsync(params).then(() => {
       console.log("Successfully uploaded data to " + bucketName + "/" + csvFileName);
-      sendRequestToEventil(csvFileName)
+      sendRequestToEventil(slug)
     })
   })
 }
 
-function sendRequestToEventil(csvFileName) {
-  const url = `https://s3.amazonaws.com/kasiakasprzak/${csvFileName}`
-  const slug = csvFileName.split('.')[0].slice(0, -2);
+function sendRequestToEventil(slug) {
+  const url = `https://s3.amazonaws.com/kasiakasprzak/${slug}.csv` /* change on Nukomeet's aws */
   const options = {
     method: 'POST',
     url: `https://eventil.com/events/${slug}/add_speaker_participations`,
@@ -170,7 +167,8 @@ function sendRequestToEventil(csvFileName) {
       url: url
     }
   };
-
+  console.log(options)
+  console.log('Sending csv data to Eventil, event:' + slug);
   request(options).then((parsedBody) => {
     console.log(parsedBody)
   }).catch( (err) => {
