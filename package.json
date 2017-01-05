@@ -1,0 +1,29 @@
+{
+  "name": "eventil-googledrive",
+  "version": "1.0.0",
+  "description": "App to lists spreadshets from Google Drive and imports them to Eventil",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "dev": "nodemon index.js"
+  },
+  "author": "Kasia Kasprzak",
+  "license": "ISC",
+  "dependencies": {
+    "aws-sdk": "^2.7.21",
+    "bluebird": "^3.4.6",
+    "body-parser": "^1.15.2",
+    "dotenv": "^2.0.0",
+    "express": "^4.14.0",
+    "fast-csv": "^2.3.0",
+    "fs": "^0.0.1-security",
+    "google-auth-library": "^0.9.10",
+    "googleapis": "^15.0.0",
+    "html": "^1.0.0",
+    "nunjucks": "^3.0.0",
+    "readline": "^1.3.0"
+  },
+  "devDependencies": {
+    "nodemon": "^1.11.0"
+  }
+}

@@ -1,0 +1,15 @@
+<!DOCTYPE html>
+<h2>Files</h2>
+<div>
+  {% for file in files %}
+  <div>
+    {{ file.name }}
+    <form method="post" action="/import">
+      <input type="text" name="slug" value="" placeholder="Enter slug here">
+      <input type="hidden" name="file_id" value={{file.id}}>
+      <input type="hidden" name="file_name" value={{file.name}}>
+      <input type="submit" value="Import" class="button -regular -blue"/>
+    </form>
+  </div>
+  {% endfor %}
+</div>
