@@ -15,7 +15,7 @@ Put all environment variables into `.env`.
 
 List of all env vars in `.env.example`.
 
-Create in your home directory folder '.aws' and inside this folder file 'credentials'. Paste there
+Create in your home directory folder ```.aws``` and inside this folder file ```credentials```. Paste there
 
 ```
 [default]
