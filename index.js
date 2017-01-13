@@ -23,7 +23,9 @@ nunjucks.configure('views', {
   express   : app
 });
 
-const s3 = new AWS.S3();
+const s3 = new AWS.S3({
+  signatureVersion: 'v4'
+});
 
 const OAuth2 = google.auth.OAuth2;
 const oauth2Client = new OAuth2(
@@ -100,7 +102,7 @@ const getSheets = Promise.promisify(sheets.spreadsheets.get);
 const writeToStreamAsync = Promise.promisify(csv.writeToString);
 const createBucketAsync = Promise.promisify(s3.createBucket.bind(s3));
 const putObjectAsync = Promise.promisify(s3.putObject.bind(s3));
-
+const headBucketAsync = Promise.promisify(s3.headBucket.bind(s3));
 
 function getProjects() {
   const rootDirId = process.env.GOOGLE_ROOT_DIR
@@ -142,24 +144,32 @@ function createConfigFiles(data, slug){
   const worksheet = data.valueRanges[0]
   const csvData = worksheet.values
   writeToStreamAsync(csvData, {headers: true}).then((result) => {
-    storeCsvOnAws(result, slug)
+    checkBucket(result, slug)
   })
 }
 
-function storeCsvOnAws(data, slug) {
-  const bucketName = 'kasiakasprzak' /* Change on 'sources' whit Nukomeet's aws credentials. With my credentials I can't use 'sources' bucket. I have to provide uniq bucket - free acount? */
-  createBucketAsync({Bucket: bucketName}).then(() => {
-    const csvFileName = `${slug}.csv`
-    const params = {Bucket: bucketName, Key: csvFileName , Body: data, ACL: 'public-read'};
-    putObjectAsync(params).then(() => {
-      console.log("Successfully uploaded data to " + bucketName + "/" + csvFileName);
-      sendRequestToEventil(slug)
+function checkBucket(data, slug) {
+  const bucketName = process.env.AWS_BUCKET_NAME
+  headBucketAsync({Bucket:bucketName}).then(() => {
+    storeCsvOnAws(data, slug, bucketName)
+  }).catch(() => {
+    createBucketAsync({Bucket: bucketName}).then(() => {
+      storeCsvOnAws(data, slug, bucketName)
     })
   })
 }
 
+function storeCsvOnAws(data, slug, bucketName) {
+  const csvFileName = `sources/${slug}.csv`
+  const params = {Bucket: bucketName, Key: csvFileName , Body: data, ACL: 'public-read'};
+  putObjectAsync(params).then(() => {
+    console.log("Successfully uploaded data to " + bucketName + "/" + csvFileName);
+    sendRequestToEventil(slug)
+  })
+}
+
 function sendRequestToEventil(slug) {
-  const url = `https://s3.amazonaws.com/kasiakasprzak/${slug}.csv` /* change on Nukomeet's aws */
+  const url = `https://${process.env.AWS_BUCKET_NAME}.s3.amazonaws.com/sources/${slug}.csv`
   const options = {
     method: 'POST',
     url: `https://eventil.com/events/${slug}/add_speaker_participations`,
